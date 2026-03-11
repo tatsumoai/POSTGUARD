@@ -19,7 +19,7 @@ All results are stored in MySQL and displayed in a scan history dashboard.
 ## Architecture
 
 ```
-Browser (user pastes job posting)
+Browser (user pastes job posting or URL)
     |
     v
 Nginx (reverse proxy + SSL via Let's Encrypt)
@@ -59,6 +59,7 @@ The server was configured from scratch with security hardening:
 - SSL/TLS via Let's Encrypt with automatic renewal
 - PHP-FPM for process management
 - MySQL with dedicated app user and least-privilege permissions
+- Rate limiting via Laravel throttle middleware (10 requests/min per IP)
 
 See the [runbooks/](runbooks/) directory for detailed documentation of every infrastructure step.
 
@@ -75,15 +76,28 @@ Server: /home/arthur/postguard/
 |   |-- layouts/app.blade.php                  # base layout with full CSS (dark theme, components)
 |   |-- scans/index.blade.php                  # main page: input form + scan history cards
 |-- routes/web.php                             # GET /, POST /analyze, GET /scan/{id}, DELETE /scan/{id}
+|-- public/
+|   |-- POSTGUARDlogo.png                      # logo used in nav and as fallback favicon
+|   |-- favicon.ico                            # browser tab icon
 |-- .env                                       # environment config (DB credentials, API key)
 ```
 
+## Key Features
+
+- **Smart Input Detection** - single input box auto-detects whether you pasted a URL or text. Shows "Link detected" for URLs, word count for text. No tab switching needed.
+- **URL Fetching** - if a URL is pasted, the backend fetches the page, strips HTML to readable text, and sends it to Claude. Falls back gracefully if the site blocks access.
+- **Score Gauge** - SVG circle with color-coded progress arc (green 80+, yellow 60-79, red below 60).
+- **AI Detection Bar** - blue-to-green gradient where the midpoint shifts based on AI score percentage.
+- **Accordion Sections** - expandable Red Flags, Positive Signals, Cautions, and Analysis sections.
+- **Rate Limiting** - Laravel throttle middleware limits to 10 scans per minute per IP.
+- **Custom Logo** - PostGuard shield logo with castle battlements and embedded P.
+
 ## Key Files
 
-- **ClaudeService.php** - The AI integration. Contains the system prompt with scoring guidelines, red flag definitions, and anti-AI-language rules. Also handles URL fetching with HTML stripping for the "Paste Link" feature.
-- **ScanController.php** - Handles form validation (text or URL input), calls ClaudeService, stores results in MySQL, and manages the scan history.
-- **app.blade.php** - Complete UI in a single Blade layout. Dark theme with CSS variables, score gauge SVGs, gradient AI detection bar, accordion components, and responsive design.
-- **index.blade.php** - Main view with tab-switching input (Paste Text / Paste Link), scan card rendering with expandable details, and JavaScript for interactivity.
+- **ClaudeService.php** - The AI integration. Contains the system prompt with scoring guidelines, red flag definitions, and anti-AI-language rules. Also handles URL fetching with HTML stripping for the link input feature.
+- **ScanController.php** - Handles form validation (smart detection of text vs URL input), calls ClaudeService, stores results in MySQL, and manages the scan history.
+- **app.blade.php** - Complete UI in a single Blade layout. Dark theme with CSS variables, score gauge SVGs, gradient AI detection bar, accordion components, GitHub source link, footer, and responsive design.
+- **index.blade.php** - Main view with smart input (auto-detects URL vs text), scan card rendering with expandable details, and JavaScript for interactivity.
 
 ## Runbooks
 
